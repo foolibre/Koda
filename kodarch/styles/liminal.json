@@ -1,0 +1,23 @@
+{
+  "name": "liminal",
+  "description": "Experimental, creative builds pushing boundaries",
+  "tagline": "Between worlds",
+  "preferences": {
+    "buildTempo": "balanced",
+    "testing": "minimal",
+    "docs": "medium",
+    "security": "basic",
+    "codeStyle": "experimental"
+  },
+  "defaultStack": {
+    "frontend": "Vite + React",
+    "backend": "Deno",
+    "database": "SQLite"
+  },
+  "toolchain": {
+    "packageManager": "bun",
+    "testRunner": "deno test",
+    "linter": "deno lint",
+    "formatter": "deno fmt"
+  }
+}

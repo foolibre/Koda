@@ -1,0 +1,11 @@
+{
+  "name": "node-api-minimal",
+  "type": "backend",
+  "description": "Minimal Node.js API with Express and TypeScript",
+  "files": {
+    "src/server.ts": "server",
+    "src/routes/health.ts": "health",
+    "src/middleware/logger.ts": "middleware",
+    "Dockerfile": "dockerfile"
+  }
+}

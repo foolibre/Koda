@@ -1,0 +1,23 @@
+{
+  "name": "hyperforge",
+  "description": "Fast, scalable builds optimized for production velocity",
+  "tagline": "Speed meets scale",
+  "preferences": {
+    "buildTempo": "fast",
+    "testing": "essential",
+    "docs": "medium",
+    "security": "high",
+    "codeStyle": "pragmatic"
+  },
+  "defaultStack": {
+    "frontend": "Next.js",
+    "backend": "Node.js",
+    "database": "PostgreSQL"
+  },
+  "toolchain": {
+    "packageManager": "pnpm",
+    "testRunner": "vitest",
+    "linter": "eslint",
+    "formatter": "prettier"
+  }
+}

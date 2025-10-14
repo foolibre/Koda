@@ -1,0 +1,12 @@
+{
+  "name": "nextjs-minimal",
+  "type": "frontend",
+  "description": "Minimal Next.js starter with TypeScript and Tailwind",
+  "files": {
+    "src/pages/index.tsx": "index",
+    "src/pages/api/hello.ts": "api",
+    "src/components/Layout.tsx": "layout",
+    "tailwind.config.js": "tailwind",
+    "next.config.js": "nextconfig"
+  }
+}

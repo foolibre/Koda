@@ -1,0 +1,23 @@
+{
+  "name": "genesis",
+  "description": "Framework-level builds with maximum rigor and performance",
+  "tagline": "From first principles",
+  "preferences": {
+    "buildTempo": "meticulous",
+    "testing": "rigorous",
+    "docs": "very high",
+    "security": "paranoid",
+    "codeStyle": "strict"
+  },
+  "defaultStack": {
+    "frontend": "Rust + WASM",
+    "backend": "Rust (Axum)",
+    "database": "PostgreSQL"
+  },
+  "toolchain": {
+    "packageManager": "cargo",
+    "testRunner": "cargo test",
+    "linter": "clippy",
+    "formatter": "rustfmt"
+  }
+}

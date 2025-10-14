@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevPlan Schema",
+  "description": "Structured development plan generated from user prompts",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "Project name (kebab-case)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief project description"
+    },
+    "stack": {
+      "type": "string",
+      "description": "Technology stack (e.g., 'Next.js + Node + Postgres')"
+    },
+    "style": {
+      "type": "string",
+      "description": "Build style/mode",
+      "enum": ["artisan", "hyperforge", "liminal", "daemon", "genesis"]
+    },
+    "features": {
+      "type": "array",
+      "description": "Core features to implement",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "properties": {
+        "zip": {
+          "type": "boolean",
+          "default": true
+        },
+        "license": {
+          "type": "string",
+          "default": "MIT"
+        },
+        "deploy_targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["vercel", "netlify", "docker", "fly.io", "railway", "digitalocean"]
+          }
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "type": "string",
+          "enum": ["postgres", "mysql", "sqlite", "mongodb"]
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["supabase", "auth0", "clerk", "custom"]
+        }
+      }
+    }
+  },
+  "required": ["project", "description", "stack", "style"]
+}

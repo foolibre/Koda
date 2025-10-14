@@ -1,0 +1,23 @@
+{
+  "name": "artisan",
+  "description": "Handcrafted, elegant builds with meticulous attention to detail",
+  "tagline": "Crafted with care",
+  "preferences": {
+    "buildTempo": "meticulous",
+    "testing": "full",
+    "docs": "high",
+    "security": "high",
+    "codeStyle": "elegant"
+  },
+  "defaultStack": {
+    "frontend": "SvelteKit",
+    "backend": "FastAPI",
+    "database": "PostgreSQL"
+  },
+  "toolchain": {
+    "packageManager": "pnpm",
+    "testRunner": "vitest",
+    "linter": "eslint",
+    "formatter": "prettier"
+  }
+}

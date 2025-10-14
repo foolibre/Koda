@@ -1,0 +1,23 @@
+{
+  "name": "daemon",
+  "description": "Automation-focused builds for meta-programming and tools",
+  "tagline": "Machines building machines",
+  "preferences": {
+    "buildTempo": "balanced",
+    "testing": "rigorous",
+    "docs": "high",
+    "security": "high",
+    "codeStyle": "strict"
+  },
+  "defaultStack": {
+    "frontend": "CLI",
+    "backend": "Python",
+    "database": "PostgreSQL"
+  },
+  "toolchain": {
+    "packageManager": "poetry",
+    "testRunner": "pytest",
+    "linter": "ruff",
+    "formatter": "black"
+  }
+}

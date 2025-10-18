@@ -142,7 +142,7 @@ See \`BUILD_LOGS/\` directory for detailed logs:
 1. Review DEPLOY_PLAYBOOK.md for deployment instructions
 2. Check SECURITY_NOTES.md for security considerations
 3. Configure environment variables from .env.example
-4. Run local development: \`npm install && npm run dev\`
+4. Run local development: \`${this.style.toolchain.packageManager} install && ${this.style.toolchain.packageManager} run dev\`
 
 ---
 
@@ -155,21 +155,19 @@ Where code builds code.
   }
 
   private generateDeployPlaybook(): void {
+    const pm = this.style.toolchain.packageManager;
     const content = `# Deployment Playbook
 
 ## Prerequisites
 
-- Node.js 18+ installed
-- Package manager (${this.style.toolchain.packageManager})
-${this.devPlan.database.enabled ? '- Supabase account (for database)' : ''}
-${this.devPlan.auth.enabled ? '- Supabase project configured' : ''}
+${this.getPrerequisites()}
 
 ## Local Development
 
 ### 1. Install Dependencies
 
 \`\`\`bash
-${this.style.toolchain.packageManager} install
+${pm} install
 \`\`\`
 
 ### 2. Configure Environment
@@ -185,10 +183,10 @@ ${this.generateEnvInstructions()}
 ### 3. Run Development Server
 
 \`\`\`bash
-${this.style.toolchain.packageManager === 'npm' ? 'npm run dev' : `${this.style.toolchain.packageManager} dev`}
+${pm === 'npm' ? 'npm run dev' : `${pm} dev`}
 \`\`\`
 
-Visit http://localhost:5173
+${this.getDevServerInfo()}
 
 ## Production Deployment
 
@@ -198,8 +196,8 @@ ${this.generateDeploymentInstructions()}
 
 ### Build Fails
 
-1. Clear node_modules: \`rm -rf node_modules && ${this.style.toolchain.packageManager} install\`
-2. Check Node version: \`node --version\` (should be 18+)
+1. Clear dependencies: \`rm -rf node_modules && ${pm} install\`
+2. Check tool versions (e.g., Node, Python)
 3. Review BUILD_LOGS/build.log
 
 ### Environment Variables
@@ -234,6 +232,41 @@ Created with ⚙️ KodArch — Foolibre Labs
 
     const playbookPath = path.join(this.projectPath, 'DEPLOY_PLAYBOOK.md');
     FileTools.writeFile(playbookPath, content);
+  }
+
+  private getPrerequisites(): string {
+    const stack = this.style.defaultStack;
+    const prereqs = new Set<string>();
+
+    if (stack.frontend === 'SvelteKit' || stack.frontend === 'Next.js') {
+      prereqs.add('Node.js 18+ installed');
+      prereqs.add(`Package manager (${this.style.toolchain.packageManager})`);
+    }
+    if (stack.backend === 'FastAPI') {
+      prereqs.add('Python 3.9+ installed');
+      prereqs.add('Poetry for dependency management');
+    }
+    if (this.devPlan.database.enabled) {
+      prereqs.add('Supabase account (for database)');
+    }
+    if (this.devPlan.auth.enabled) {
+      prereqs.add('Supabase project configured');
+    }
+
+    return Array.from(prereqs).map(p => `- ${p}`).join('\n');
+  }
+
+  private getDevServerInfo(): string {
+    const stack = this.style.defaultStack;
+    let info = '';
+
+    if (stack.frontend === 'SvelteKit') {
+      info += 'Visit http://localhost:5173 for the frontend.\n';
+    }
+    if (stack.backend === 'FastAPI') {
+      info += 'The backend API is running at http://localhost:8000.\n';
+    }
+    return info;
   }
 
   private generateEnvInstructions(): string {
@@ -280,22 +313,13 @@ Configure environment variables in Netlify dashboard.`);
     if (targets.includes('docker')) {
       sections.push(`### Docker
 
-\`\`\`dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 4173
-CMD ["npm", "run", "preview"]
-\`\`\`
+${this.generateDockerfile()}
 
 Build and run:
 
 \`\`\`bash
 docker build -t ${this.devPlan.project} .
-docker run -p 4173:4173 ${this.devPlan.project}
+docker run -p 80:80 ${this.devPlan.project}
 \`\`\``);
     }
 
@@ -311,6 +335,47 @@ Set secrets: \`fly secrets set KEY=VALUE\``);
     }
 
     return sections.join('\n\n');
+  }
+
+  private generateDockerfile(): string {
+    const stack = this.style.defaultStack;
+    if (stack.frontend === 'SvelteKit' && stack.backend === 'FastAPI') {
+      return `
+# Frontend Stage
+FROM node:18-alpine AS frontend
+WORKDIR /app
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install
+COPY frontend .
+RUN pnpm build
+
+# Backend Stage
+FROM python:3.9-slim AS backend
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY backend .
+
+# Final Stage
+FROM python:3.9-slim
+WORKDIR /app
+COPY --from=backend /app /app
+COPY --from=frontend /app/build /app/static
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+`;
+    }
+
+    return `
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+EXPOSE 4173
+CMD ["npm", "run", "preview"]
+`;
   }
 
   private generateSecurityNotes(): void {
@@ -357,7 +422,7 @@ ${this.devPlan.database.enabled ? `
 
 ## Recommended Security Audits
 
-1. Run \`npm audit\` regularly
+1. Run security scanners for your stack (e.g., \`npm audit\`, \`pip-audit\`)
 2. Keep dependencies updated
 3. Review Supabase RLS policies
 4. Enable Supabase security alerts

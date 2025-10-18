@@ -3,17 +3,27 @@ import type { DevPlan, BuildStyle, ProjectStructure } from '../types';
 import { FileTools } from '../utils/filetools';
 import { Logger } from '../utils/logger';
 
+interface TemplateManifest {
+  name: string;
+  type: 'frontend' | 'backend' | 'fullstack';
+  description: string;
+  files: Record<string, string>;
+  directories?: string[];
+}
+
 export class Architect {
   private logger: Logger;
   private style: BuildStyle;
   private devPlan: DevPlan;
   private workspaceRoot: string;
+  private templatesDir: string;
 
   constructor(devPlan: DevPlan, style: BuildStyle, workspaceRoot: string, logger: Logger) {
     this.devPlan = devPlan;
     this.style = style;
     this.workspaceRoot = workspaceRoot;
     this.logger = logger;
+    this.templatesDir = path.join(__dirname, '..', 'templates');
   }
 
   async generateProject(): Promise<string> {
@@ -23,8 +33,7 @@ export class Architect {
     const projectPath = path.join(this.workspaceRoot, this.devPlan.project);
     FileTools.ensureDir(projectPath);
 
-    const structure = this.designStructure();
-    await this.scaffoldStructure(projectPath, structure);
+    await this.scaffoldFromTemplate(projectPath);
 
     this.logger.info(`Project scaffolded at: ${projectPath}`);
 
@@ -34,262 +43,41 @@ export class Architect {
     return projectPath;
   }
 
-  private designStructure(): ProjectStructure {
-    const isFullstack = this.devPlan.stack.includes('+');
-    const needsDb = this.devPlan.database.enabled;
-    const needsAuth = this.devPlan.auth.enabled;
+  private async scaffoldFromTemplate(projectPath: string): Promise<void> {
+    const templateDir = path.join(this.templatesDir, this.style.name);
+    const manifestPath = path.join(templateDir, 'template.json');
 
-    const structure: ProjectStructure = {
-      name: this.devPlan.project,
-      path: '',
-      type: 'directory',
-      children: [
-        {
-          name: 'src',
-          path: 'src',
-          type: 'directory',
-          children: this.getSourceStructure(isFullstack)
-        },
-        {
-          name: 'public',
-          path: 'public',
-          type: 'directory',
-          children: []
-        }
-      ]
-    };
-
-    if (needsDb) {
-      structure.children!.push({
-        name: 'supabase',
-        path: 'supabase',
-        type: 'directory',
-        children: [
-          {
-            name: 'migrations',
-            path: 'supabase/migrations',
-            type: 'directory',
-            children: []
-          }
-        ]
-      });
+    if (!FileTools.exists(manifestPath)) {
+      this.logger.error(`Template manifest not found for style: ${this.style.name}`);
+      return;
     }
 
-    if (this.style.preferences.testing !== 'minimal') {
-      structure.children!.push({
-        name: 'tests',
-        path: 'tests',
-        type: 'directory',
-        children: []
-      });
-    }
+    const manifest: TemplateManifest = JSON.parse(FileTools.readFile(manifestPath));
 
-    structure.children!.push(
-      { name: 'package.json', path: 'package.json', type: 'file' },
-      { name: 'tsconfig.json', path: 'tsconfig.json', type: 'file' },
-      { name: '.env.example', path: '.env.example', type: 'file' },
-      { name: '.gitignore', path: '.gitignore', type: 'file' },
-      { name: 'README.md', path: 'README.md', type: 'file' }
-    );
-
-    return structure;
-  }
-
-  private getSourceStructure(isFullstack: boolean): ProjectStructure[] {
-    const base: ProjectStructure[] = [
-      {
-        name: 'components',
-        path: 'src/components',
-        type: 'directory',
-        children: []
-      },
-      {
-        name: 'lib',
-        path: 'src/lib',
-        type: 'directory',
-        children: []
-      },
-      {
-        name: 'types',
-        path: 'src/types',
-        type: 'directory',
-        children: []
+    // Create directories
+    if (manifest.directories) {
+      for (const dir of manifest.directories) {
+        FileTools.ensureDir(path.join(projectPath, dir));
       }
-    ];
-
-    if (isFullstack) {
-      base.push({
-        name: 'api',
-        path: 'src/api',
-        type: 'directory',
-        children: []
-      });
     }
 
-    return base;
-  }
+    // Create files
+    for (const [targetPath, sourceFile] of Object.entries(manifest.files)) {
+      const sourcePath = path.join(templateDir, sourceFile);
+      const destPath = path.join(projectPath, targetPath);
 
-  private async scaffoldStructure(basePath: string, structure: ProjectStructure): Promise<void> {
-    const fullPath = path.join(basePath, structure.path);
+      let content = FileTools.readFile(sourcePath);
+      content = this.replacePlaceholders(content);
 
-    if (structure.type === 'directory') {
-      FileTools.ensureDir(fullPath);
-
-      if (structure.children) {
-        for (const child of structure.children) {
-          await this.scaffoldStructure(basePath, child);
-        }
-      }
-    } else {
-      const content = this.generateFileContent(structure.name);
-      FileTools.writeFile(fullPath, content);
+      FileTools.ensureDir(path.dirname(destPath));
+      FileTools.writeFile(destPath, content);
     }
   }
 
-  private generateFileContent(filename: string): string {
-    switch (filename) {
-      case 'package.json':
-        return this.generatePackageJson();
-      case 'tsconfig.json':
-        return this.generateTsConfig();
-      case '.env.example':
-        return this.generateEnvExample();
-      case '.gitignore':
-        return this.generateGitignore();
-      case 'README.md':
-        return this.generateReadme();
-      default:
-        return '';
-    }
-  }
-
-  private generatePackageJson(): string {
-    const pkg = {
-      name: this.devPlan.project,
-      version: '0.1.0',
-      private: true,
-      description: this.devPlan.description,
-      type: 'module',
-      scripts: {
-        dev: 'vite',
-        build: 'vite build',
-        preview: 'vite preview',
-        typecheck: 'tsc --noEmit',
-        ...(this.style.preferences.testing !== 'minimal' && {
-          test: this.style.toolchain.testRunner === 'vitest' ? 'vitest' : 'jest'
-        })
-      },
-      dependencies: this.getDependencies(),
-      devDependencies: this.getDevDependencies()
-    };
-
-    return JSON.stringify(pkg, null, 2);
-  }
-
-  private getDependencies(): Record<string, string> {
-    const deps: Record<string, string> = {
-      react: '^18.3.1',
-      'react-dom': '^18.3.1'
-    };
-
-    if (this.devPlan.database.enabled || this.devPlan.auth.enabled) {
-      deps['@supabase/supabase-js'] = '^2.57.4';
-    }
-
-    deps['lucide-react'] = '^0.344.0';
-
-    return deps;
-  }
-
-  private getDevDependencies(): Record<string, string> {
-    return {
-      '@types/react': '^18.3.5',
-      '@types/react-dom': '^18.3.0',
-      '@vitejs/plugin-react': '^4.3.1',
-      typescript: '^5.5.3',
-      vite: '^5.4.2',
-      tailwindcss: '^3.4.1',
-      autoprefixer: '^10.4.18',
-      postcss: '^8.4.35'
-    };
-  }
-
-  private generateTsConfig(): string {
-    return JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ES2020',
-          useDefineForClassFields: true,
-          lib: ['ES2020', 'DOM', 'DOM.Iterable'],
-          module: 'ESNext',
-          skipLibCheck: true,
-          moduleResolution: 'bundler',
-          allowImportingTsExtensions: true,
-          resolveJsonModule: true,
-          isolatedModules: true,
-          noEmit: true,
-          jsx: 'react-jsx',
-          strict: true,
-          noUnusedLocals: true,
-          noUnusedParameters: true,
-          noFallthroughCasesInSwitch: true
-        },
-        include: ['src']
-      },
-      null,
-      2
-    );
-  }
-
-  private generateEnvExample(): string {
-    const lines = ['# Environment Variables'];
-
-    if (this.devPlan.database.enabled || this.devPlan.auth.enabled) {
-      lines.push('', '# Supabase', 'VITE_SUPABASE_URL=your-project-url', 'VITE_SUPABASE_ANON_KEY=your-anon-key');
-    }
-
-    return lines.join('\n');
-  }
-
-  private generateGitignore(): string {
-    return `node_modules
-dist
-.env
-.env.local
-*.log
-.DS_Store
-coverage
-`;
-  }
-
-  private generateReadme(): string {
-    return `# ${this.devPlan.project}
-
-${this.devPlan.description}
-
-## Built with KodArch
-
-Created with ⚙️ KodArch — Foolibre Labs
-Where code builds code.
-
-**Build Style:** ${this.style.name}
-**Stack:** ${this.devPlan.stack}
-
-## Features
-
-${this.devPlan.features.map(f => `- ${f}`).join('\n')}
-
-## Getting Started
-
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-
-## License
-
-${this.devPlan.artifact.license}
-`;
+  private replacePlaceholders(content: string): string {
+    return content
+      .replace(/{{PROJECT_NAME}}/g, this.devPlan.project)
+      .replace(/{{PROJECT_DESCRIPTION}}/g, this.devPlan.description);
   }
 
   private generateDocumentation(projectPath: string): void {

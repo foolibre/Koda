@@ -1,0 +1,19 @@
+{
+  "name": "artisan",
+  "type": "fullstack",
+  "description": "A handcrafted SvelteKit and FastAPI project.",
+  "files": {
+    "frontend/src/routes/+page.svelte": "frontend.page.svelte",
+    "frontend/src/app.html": "frontend.app.html",
+    "frontend/package.json": "frontend.package.json",
+    "backend/app/main.py": "backend.main.py",
+    "backend/requirements.txt": "backend.requirements.txt",
+    "docker-compose.yml": "docker-compose.yml",
+    "README.md": "readme.md"
+  },
+  "directories": [
+    "frontend/src/lib",
+    "frontend/src/components",
+    "backend/app/api"
+  ]
+}

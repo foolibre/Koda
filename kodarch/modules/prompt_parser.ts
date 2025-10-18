@@ -81,22 +81,26 @@ export class PromptParser {
 
   private extractProjectName(prompt: string): string {
     const patterns = [
-      /(?:build|create|make)\s+(?:a|an)?\s*["']?([a-z0-9-]+)["']?/i,
-      /project\s+called\s+["']?([a-z0-9-]+)["']?/i,
-      /["']([a-z0-9-]+)["']\s+(?:app|application|project)/i
+      /(?:build|create|make|initialize|scaffold)\s+(?:a|an)?\s+.*(?:named|called)\s+["']?([a-z0-9\s-]+)["']?/i,
+      /project\s+(?:named|called)\s+["']?([a-z0-9\s-]+)["']?/i,
+      /["']([a-z0-9\s-]+)["']\s+(?:as\s+the\s+project\s+name)/i,
+      /["']([a-z0-9\s-]+)["']\s+(?:app|application|project|system)/i,
+      /(?:named|called)\s+["']?([a-z0-9\s-]+)["']?$/i
     ];
 
     for (const pattern of patterns) {
-      const match = prompt.match(pattern);
-      if (match) return this.toKebabCase(match[1]);
+        const match = prompt.match(pattern);
+        if (match && match[1]) {
+            return this.toKebabCase(match[1]);
+        }
     }
 
     const words = prompt.toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/)
-      .filter(w => w.length > 3 && !this.isCommonWord(w));
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 3 && !this.isCommonWord(w));
 
-    return words.slice(0, 2).join('-') || 'kodarch-project';
+    return words.length > 0 ? this.toKebabCase(words.slice(0, 2).join(' ')) : 'kodarch-project';
   }
 
   private extractDescription(prompt: string): string {

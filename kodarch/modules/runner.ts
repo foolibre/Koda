@@ -7,18 +7,41 @@ import type { BuildStyle } from '../types';
 
 const execAsync = promisify(exec);
 
+interface CommandMap {
+  install: string;
+  build: string;
+  test: string;
+}
+
 export class Runner {
   private projectPath: string;
   private logger: Logger;
   private style: BuildStyle;
   private logsDir: string;
+  private commandMap: CommandMap;
 
   constructor(projectPath: string, style: BuildStyle, logger: Logger) {
     this.projectPath = projectPath;
     this.style = style;
     this.logger = logger;
     this.logsDir = path.join(projectPath, 'BUILD_LOGS');
+    this.commandMap = this.getCommandMap();
     FileTools.ensureDir(this.logsDir);
+  }
+
+  private getCommandMap(): CommandMap {
+    const pm = this.style.toolchain.packageManager;
+    switch (pm) {
+      case 'pnpm':
+        return { install: 'pnpm install', build: 'pnpm build', test: 'pnpm test' };
+      case 'poetry':
+        return { install: 'poetry install', build: 'poetry run build', test: 'poetry run test' };
+      case 'cargo':
+        return { install: 'cargo build', build: 'cargo build --release', test: 'cargo test' };
+      case 'npm':
+      default:
+        return { install: 'npm install', build: 'npm run build', test: 'npm test' };
+    }
   }
 
   async runAll(): Promise<void> {
@@ -37,10 +60,7 @@ export class Runner {
     this.logger.info('Installing dependencies...');
 
     try {
-      const packageManager = this.style.toolchain.packageManager;
-      const cmd = packageManager === 'npm' ? 'npm install' : `${packageManager} install`;
-
-      const { stdout, stderr } = await execAsync(cmd, {
+      const { stdout, stderr } = await execAsync(this.commandMap.install, {
         cwd: this.projectPath,
         timeout: 300000
       });
@@ -61,7 +81,7 @@ export class Runner {
     this.logger.info('Building project...');
 
     try {
-      const { stdout, stderr } = await execAsync('npm run build', {
+      const { stdout, stderr } = await execAsync(this.commandMap.build, {
         cwd: this.projectPath,
         timeout: 300000
       });
@@ -82,7 +102,7 @@ export class Runner {
     this.logger.info('Running tests...');
 
     try {
-      const { stdout, stderr } = await execAsync('npm test', {
+      const { stdout, stderr } = await execAsync(this.commandMap.test, {
         cwd: this.projectPath,
         timeout: 300000
       });
